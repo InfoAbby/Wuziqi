@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="array_message">
+        <item>你好!</item>
+        <item>你好菜哦!</item>
+        <item>你好棒棒哦!</item>
+        <item>快点吧!我等到花都谢了!</item>
+        <item>哥哥,交个朋友把</item>
+        <item>老铁双击666！</item>
+    </string-array>
+</resources>
