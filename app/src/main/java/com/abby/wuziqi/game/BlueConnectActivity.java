@@ -6,7 +6,6 @@ import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -16,7 +15,6 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.AdapterView;
@@ -24,7 +22,7 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import com.abby.wuziqi.Adapter.BlueToothDevicesAdapter;
+import com.abby.wuziqi.Adapter.BluetoothDevicesAdapter;
 import com.abby.wuziqi.R;
 import com.abby.wuziqi.bean.BlueTooth;
 import com.abby.wuziqi.config.ConfigData;
@@ -43,13 +41,13 @@ import java.util.Set;
 
 public class BlueConnectActivity extends Activity {
     private Button search;
-    private ListView blueDevice;
-    private BlueToothDevicesAdapter adapter;
+    private ListView listView;
+    private BluetoothDevicesAdapter adapter;
     private BlueToothReceiver receiver;
     private BluetoothAdapter bluetoothAdapter;
     private String name,address;
-    private List<BlueTooth> blueTooths;
-    private List<BluetoothDevice> devices;
+    private List<BlueTooth> mbluetooths;
+    private List<BluetoothDevice> mdevices;
     private BlueServerThread blueServerThread;
     private BlueSocketThread blueSocketThread;
     private BluetoothSocket bluetoothSocket;
@@ -71,6 +69,23 @@ public class BlueConnectActivity extends Activity {
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         setContentView(R.layout.blue_connect);
+        //一个用来放权限名字字符串的list
+        List<String> permissionList = new ArrayList<>();
+        //检查权限是否已获得
+        if (ContextCompat.checkSelfPermission(BlueConnectActivity.this, Manifest.permission.BLUETOOTH) != PackageManager.PERMISSION_GRANTED){
+            permissionList.add(Manifest.permission.BLUETOOTH);
+        }
+        if (ContextCompat.checkSelfPermission(BlueConnectActivity.this, Manifest.permission.BLUETOOTH_ADMIN) != PackageManager.PERMISSION_GRANTED){
+            permissionList.add(Manifest.permission.BLUETOOTH_ADMIN);
+        }
+
+        if (!permissionList.isEmpty()){
+            //如果有其中一个没有获得就申请权限
+            String[] permissions = permissionList.toArray(new String[permissionList.size()]);
+            ActivityCompat.requestPermissions(BlueConnectActivity.this, permissions, 1);
+        }
+        search = (Button) findViewById(R.id.search);
+        listView = (ListView) findViewById(R.id.bluetooth);
         init();//初始化
         initSocket();//初始化Socket
 
@@ -88,20 +103,20 @@ public class BlueConnectActivity extends Activity {
             //中断搜索
             bluetoothAdapter.cancelDiscovery();
         }
-        blueTooths.clear();
-        devices.clear();
+        mbluetooths.clear();
+        mdevices.clear();
 
         //获取已配对的设备
         Set<BluetoothDevice> devices_m = bluetoothAdapter.getBondedDevices();
-        if (devices.size() > 0){
+        if (mdevices.size() > 0){
             for (BluetoothDevice device : devices_m){
-                if (!devices.contains(device)){
-                    blueTooths.add(new BlueTooth(device.getName(),device.getAddress()));
-                    devices.add(device);
+                if (!mdevices.contains(device)){
+                    mbluetooths.add(new BlueTooth(device.getName(),device.getAddress()));
+                    mdevices.add(device);
                 }
             }
         }
-        adapter.setDevices(blueTooths);
+        adapter.setDevices(mbluetooths);
         adapter.notifyDataSetChanged();
         //直接调用startDiscovery扫描
         bluetoothAdapter.startDiscovery();
@@ -114,10 +129,9 @@ public class BlueConnectActivity extends Activity {
     }
 
     private void init() {
-        search = findViewById(R.id.search);
-        blueDevice = findViewById(R.id.bluetooth);
-        blueTooths = new ArrayList<>();
-        devices = new ArrayList<>();
+
+        mbluetooths = new ArrayList<>();
+        mdevices = new ArrayList<>();
         activity = this;
         //初始化适配器
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -129,17 +143,22 @@ public class BlueConnectActivity extends Activity {
         address = bluetoothAdapter.getAddress();
 
         //初始化ListView
-        adapter = new BlueToothDevicesAdapter(blueTooths,this);
-        blueDevice.setAdapter(adapter);
+        try{
+            adapter = new BluetoothDevicesAdapter(mbluetooths,BlueConnectActivity.this);
+            listView.setAdapter(adapter);
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
 
         //实例化广播
-        receiver = new BlueToothReceiver(devices, blueTooths, new BlueToothReceiver.OnReceiverListener() {
+        receiver = new BlueToothReceiver(mdevices, mbluetooths, new BlueToothReceiver.OnReceiverListener() {
             @Override
-            public void setBlueToothList(List<BlueTooth> bluetooths, List<BluetoothDevice> bluetoothDevices) {
+            public void setBlueToothList(List<BlueTooth> bluetooths, List<BluetoothDevice> devices) {
                 //
-                blueTooths=bluetooths;
-                devices = devices;
-                adapter.setDevices(blueTooths);
+                mbluetooths =bluetooths;
+                mdevices = devices;
+                adapter.setDevices(mbluetooths);
                 //
                 adapter.notifyDataSetChanged();
 
@@ -157,7 +176,7 @@ public class BlueConnectActivity extends Activity {
         filter = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
         registerReceiver(receiver,filter);
 
-        blueDevice.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 connectBluetooth(position);
@@ -176,7 +195,7 @@ public class BlueConnectActivity extends Activity {
      */
     private void connectBluetooth(int position) {
         //
-        final BluetoothDevice device = bluetoothAdapter.getRemoteDevice(blueTooths.get(position).getAddress());
+        final BluetoothDevice device = bluetoothAdapter.getRemoteDevice(mbluetooths.get(position).getAddress());
         try{
             //
             if (device.getBondState() == BluetoothDevice.BOND_BONDED){
@@ -186,7 +205,7 @@ public class BlueConnectActivity extends Activity {
                 thisSocket = device.createRfcommSocketToServiceRecord(ConfigData.UUID);
                 AlertDialog dialog = new AlertDialog.Builder(BlueConnectActivity.this)
                         .setTitle("发起挑战")
-                        .setMessage("确认挑战玩家："+blueTooths.get(position).getName())
+                        .setMessage("确认挑战玩家："+ mbluetooths.get(position).getName())
                         .setPositiveButton("确定", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {

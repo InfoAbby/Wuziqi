@@ -17,19 +17,18 @@ import java.util.List;
  * Created by keybo on 2017/12/26 0026.
  */
 
-public class BlueToothDevicesAdapter extends BaseAdapter {
+public class BluetoothDevicesAdapter extends BaseAdapter {
     private List<BlueTooth> blueTooths;
     private Context context;
     private LayoutInflater inflater;
 
-    public BlueToothDevicesAdapter(List<BlueTooth> blueTooths,Context context){
+    public BluetoothDevicesAdapter(List<BlueTooth> blueTooths, Context context){
         this.blueTooths = blueTooths;
         this.context = context;
         this.inflater = LayoutInflater.from(context);
     }
 
-    public BlueToothDevicesAdapter(List<BlueTooth> blueTooths, BlueConnectActivity blueConnectActivity) {
-    }
+
 
     @Override
     public int getCount() {
@@ -66,7 +65,7 @@ public class BlueToothDevicesAdapter extends BaseAdapter {
 
     public void setDevices(List<BlueTooth> bluetooths) {
 
-        bluetooths = bluetooths;
+        blueTooths = bluetooths;
     }
 
     class ViewHolder {
